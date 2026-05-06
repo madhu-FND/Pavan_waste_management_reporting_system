@@ -1,0 +1,12 @@
+{
+  "name": "gramsafai",
+  "version": "1.0.0",
+  "description": "GramSafai – Rural Waste Management Reporting System by Pavan",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "build": "echo 'Static site – no build needed'"
+  },
+  "keywords": ["waste", "rural", "gramsafai", "management"],
+  "author": "Pavan Kumar <pavankumar@gmail.com>"
+}
