@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>GramSafai – Rural Waste Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --green: #1a7a3b;
+      --green-light: #27ae60;
+      --green-dark: #0f4c24;
+      --green-pale: #e8f5e9;
+      --yellow: #f4c430;
+      --yellow-dark: #d4a017;
+      --orange: #e67e22;
+      --red: #e74c3c;
+      --blue: #2980b9;
+      --bg: #f5f9f5;
+      --card: #fff;
+      --text: #1a2e1a;
+      --text-muted: #5a7a5a;
+      --border: #c8e6c9;
+      --shadow: 0 2px 12px rgba(26,122,59,0.10);
+      --shadow-lg: 0 8px 32px rgba(26,122,59,0.18);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Noto Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    
+    /* ---- SPLASH ---- */
+    #splash {
+      position: fixed; inset: 0; background: linear-gradient(160deg, #0f4c24 0%, #1a7a3b 50%, #27ae60 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
+      transition: opacity 0.5s;
+    }
+    #splash .logo-big { font-family: 'Baloo 2', cursive; font-size: 2.4rem; font-weight: 800; color: #fff; text-align: center; }
+    #splash .logo-sub { font-size: 0.85rem; color: rgba(255,255,255,0.75); margin-top: 4px; text-align: center; letter-spacing: 1px; }
+    #splash .leaf-icon { font-size: 3.5rem; margin-bottom: 12px; animation: spin 3s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    #splash .progress { width: 180px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 99px; margin-top: 28px; overflow: hidden; }
+    #splash .progress-bar { height: 100%; background: #fff; border-radius: 99px; width: 0; animation: loadBar 2s ease forwards; }
+    @keyframes loadBar { to { width: 100%; } }
+    
+    /* ---- AUTH ---- */
+    #authScreen { display: none; min-height: 100vh; background: linear-gradient(160deg, #0f4c24 0%, #27ae60 100%); padding: 40px 20px; }
+    .auth-card { background: #fff; border-radius: 24px; padding: 32px 24px; max-width: 420px; margin: 0 auto; box-shadow: var(--shadow-lg); }
+    .auth-logo { font-family: 'Baloo 2', cursive; font-size: 1.8rem; font-weight: 800; color: var(--green); text-align: center; margin-bottom: 4px; }
+    .auth-sub { text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 24px; }
+    .auth-tabs { display: flex; background: var(--green-pale); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
+    .auth-tab { flex: 1; text-align: center; padding: 9px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
+    .auth-tab.active { background: var(--green); color: #fff; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 0.9rem; outline: none; transition: border 0.2s; font-family: inherit; }
+    .form-input:focus { border-color: var(--green); }
+    .form-select { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 0.9rem; outline: none; background: #fff; font-family: inherit; }
+    .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .btn-primary { background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%); color: #fff; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-outline { background: transparent; border: 2px solid var(--green); color: var(--green); }
+    .btn-sm { width: auto; padding: 8px 16px; font-size: 0.82rem; border-radius: 8px; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-yellow { background: var(--yellow); color: #333; }
+    
+    /* ---- APP SHELL ---- */
+    #app { display: none; min-height: 100vh; padding-bottom: 80px; }
+    
+    /* ---- TOP BAR ---- */
+    .topbar { background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .topbar-logo { font-family: 'Baloo 2', cursive; font-size: 1.3rem; font-weight: 800; color: #fff; }
+    .topbar-logo span { color: var(--yellow); }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--yellow); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--green-dark); font-size: 0.9rem; cursor: pointer; }
+    .notif-btn { position: relative; color: #fff; font-size: 1.2rem; cursor: pointer; }
+    .notif-badge { position: absolute; top: -4px; right: -6px; background: var(--red); color: #fff; font-size: 0.6rem; font-weight: 700; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; }
+    
+    /* ---- BOTTOM NAV ---- */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid var(--border); display: flex; z-index: 100; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 0 8px; cursor: pointer; color: #aaa; transition: all 0.2s; font-size: 0.62rem; font-weight: 600; gap: 3px; }
+    .nav-item i { font-size: 1.15rem; }
+    .nav-item.active { color: var(--green); }
+    .nav-item.active i { color: var(--green); }
+    
+    /* ---- PAGES ---- */
+    .page { display: none; padding: 16px; animation: fadeIn 0.3s; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    
+    /* ---- CARDS ---- */
+    .card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 14px; border: 1px solid var(--border); }
+    .card-title { font-family: 'Baloo 2', cursive; font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .card-title i { color: var(--green); }
+    
+    /* ---- STATS GRID ---- */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .stat-card { background: var(--card); border-radius: 14px; padding: 16px 14px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+    .stat-value { font-family: 'Baloo 2', cursive; font-size: 1.8rem; font-weight: 800; color: var(--green); line-height: 1; }
+    .stat-label { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; font-weight: 500; }
+    .stat-icon { font-size: 1.4rem; margin-bottom: 8px; }
+    
+    /* ---- HERO BANNER ---- */
+    .hero { background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%); border-radius: 20px; padding: 20px 18px; color: #fff; margin-bottom: 14px; position: relative; overflow: hidden; }
+    .hero::before { content: '🌿'; position: absolute; right: -10px; bottom: -10px; font-size: 5rem; opacity: 0.15; }
+    .hero-title { font-family: 'Baloo 2', cursive; font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+    .hero-sub { font-size: 0.82rem; opacity: 0.85; }
+    .hero-btn { display: inline-block; margin-top: 14px; background: var(--yellow); color: var(--green-dark); padding: 10px 20px; border-radius: 10px; font-weight: 700; font-size: 0.85rem; border: none; cursor: pointer; }
+    
+    /* ---- BADGE / CHIPS ---- */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px; font-size: 0.72rem; font-weight: 600; }
+    .badge-green { background: #e8f5e9; color: var(--green); }
+    .badge-yellow { background: #fff8e1; color: #b8860b; }
+    .badge-red { background: #fdecea; color: var(--red); }
+    .badge-blue { background: #e3f2fd; color: var(--blue); }
+    .badge-orange { background: #fff3e0; color: var(--orange); }
+    
+    /* ---- REPORT CARD ---- */
+    .report-card { background: var(--card); border-radius: 14px; padding: 14px; border: 1px solid var(--border); margin-bottom: 12px; box-shadow: var(--shadow); }
+    .report-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+    .report-card-title { font-weight: 700; font-size: 0.92rem; color: var(--text); }
+    .report-card-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+    .report-card-body { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5; }
+    .report-card-img { width: 100%; height: 140px; object-fit: cover; border-radius: 10px; margin-bottom: 10px; background: var(--green-pale); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.8rem; }
+    .report-card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .vote-row { display: flex; gap: 10px; }
+    .vote-btn { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--text-muted); background: var(--bg); border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+    .vote-btn.liked { color: var(--green); background: var(--green-pale); }
+    
+    /* ---- MAP PLACEHOLDER ---- */
+    .map-container { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 14px; height: 220px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--text-muted); flex-direction: column; gap: 8px; border: 1px solid var(--border); }
+    .map-pin { font-size: 2rem; animation: bounce 1s ease infinite alternate; }
+    @keyframes bounce { to { transform: translateY(-8px); } }
+    
+    /* ---- LEADERBOARD ---- */
+    .lb-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--card); border-radius: 12px; margin-bottom: 8px; border: 1px solid var(--border); }
+    .lb-rank { font-family: 'Baloo 2', cursive; font-size: 1.1rem; font-weight: 800; width: 28px; text-align: center; }
+    .lb-rank.gold { color: #f4c430; }
+    .lb-rank.silver { color: #aaa; }
+    .lb-rank.bronze { color: #cd7f32; }
+    .lb-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--green-pale); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+    .lb-name { font-weight: 600; font-size: 0.88rem; }
+    .lb-points { font-family: 'Baloo 2', cursive; font-weight: 700; color: var(--green); margin-left: auto; }
+    
+    /* ---- TIMELINE ---- */
+    .timeline { position: relative; padding-left: 24px; }
+    .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+    .tl-item { position: relative; margin-bottom: 18px; }
+    .tl-dot { position: absolute; left: -20px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--green); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--green); }
+    .tl-time { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px; }
+    .tl-text { font-size: 0.84rem; color: var(--text); }
+    
+    /* ---- TABS ---- */
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { flex-shrink: 0; padding: 8px 16px; border-radius: 99px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: var(--card); color: var(--text-muted); transition: all 0.2s; }
+    .tab.active { background: var(--green); color: #fff; border-color: var(--green); }
+    
+    /* ---- PROGRESS ---- */
+    .progress-bar-wrap { background: #e0e0e0; border-radius: 99px; height: 8px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green-light), var(--green)); transition: width 0.5s ease; }
+    
+    /* ---- MODAL ---- */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 200; align-items: flex-end; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 24px 24px 0 0; padding: 24px 20px; width: 100%; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+    @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .modal-handle { width: 40px; height: 4px; background: #ddd; border-radius: 99px; margin: 0 auto 18px; }
+    .modal-title { font-family: 'Baloo 2', cursive; font-size: 1.15rem; font-weight: 800; color: var(--text); margin-bottom: 16px; }
+    
+    /* ---- PHOTO UPLOAD ---- */
+    .photo-upload { border: 2px dashed var(--border); border-radius: 14px; padding: 28px; text-align: center; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; }
+    .photo-upload i { font-size: 2rem; color: var(--green); display: block; margin-bottom: 8px; }
+    
+    /* ---- ALERTS ---- */
+    .alert { padding: 12px 14px; border-radius: 12px; font-size: 0.84rem; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px; }
+    .alert-success { background: #e8f5e9; color: var(--green-dark); border-left: 4px solid var(--green); }
+    .alert-error { background: #fdecea; color: var(--red); border-left: 4px solid var(--red); }
+    .alert-info { background: #e3f2fd; color: var(--blue); border-left: 4px solid var(--blue); }
+    .alert-warn { background: #fff8e1; color: #b8860b; border-left: 4px solid var(--yellow); }
+    
+    /* ---- SETTINGS ROW ---- */
+    .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-size: 0.88rem; font-weight: 500; }
+    .setting-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+    .toggle { position: relative; width: 46px; height: 26px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: #ddd; border-radius: 99px; cursor: pointer; transition: 0.2s; }
+    .toggle-slider:before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+    .toggle input:checked + .toggle-slider { background: var(--green); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+    
+    /* ---- SECTION HEADER ---- */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .section-title { font-family: 'Baloo 2', cursive; font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .section-link { font-size: 0.78rem; color: var(--green); font-weight: 600; cursor: pointer; }
+    
+    /* ---- WASTE TYPE GRID ---- */
+    .waste-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .waste-item { background: var(--card); border-radius: 14px; padding: 14px 8px; text-align: center; border: 2px solid var(--border); cursor: pointer; transition: all 0.2s; }
+    .waste-item.selected { border-color: var(--green); background: var(--green-pale); }
+    .waste-item i { font-size: 1.6rem; display: block; margin-bottom: 6px; }
+    .waste-item span { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); }
+    
+    /* ---- CHIP SELECT ---- */
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .chip { padding: 6px 14px; border-radius: 99px; font-size: 0.78rem; font-weight: 600; border: 1.5px solid var(--border); background: var(--card); cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
+    .chip.selected { background: var(--green); color: #fff; border-color: var(--green); }
+    
+    /* ---- SCHEDULE CARD ---- */
+    .schedule-item { display: flex; align-items: center; gap: 14px; padding: 14px; background: var(--card); border-radius: 14px; border: 1px solid var(--border); margin-bottom: 10px; }
+    .schedule-day { background: var(--green-pale); color: var(--green-dark); border-radius: 10px; padding: 8px 10px; text-align: center; min-width: 52px; }
+    .schedule-day-num { font-family: 'Baloo 2', cursive; font-size: 1.3rem; font-weight: 800; line-height: 1; }
+    .schedule-day-name { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .schedule-info-title { font-weight: 600; font-size: 0.88rem; }
+    .schedule-info-sub { font-size: 0.74rem; color: var(--text-muted); margin-top: 2px; }
+    
+    /* ---- REWARD CARD ---- */
+    .reward-card { background: linear-gradient(135deg, #fff8e1, #fff3cd); border-radius: 16px; padding: 16px; border: 1px solid #f4c430; margin-bottom: 12px; }
+    .reward-points { font-family: 'Baloo 2', cursive; font-size: 2rem; font-weight: 800; color: var(--yellow-dark); }
+    
+    /* ---- ADMIN TABLE ---- */
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .admin-table th { background: var(--green-pale); color: var(--green-dark); padding: 10px 12px; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .admin-table tr:hover td { background: var(--bg); }
+    
+    /* ---- TOAST ---- */
+    #toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--green-dark); color: #fff; padding: 12px 20px; border-radius: 12px; font-size: 0.84rem; font-weight: 600; z-index: 9999; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    
+    /* ---- LOADER ---- */
+    .loader { display: flex; align-items: center; justify-content: center; padding: 32px; }
+    .loader-spin { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    
+    /* ---- EMPTY STATE ---- */
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+    .empty-state i { font-size: 3rem; color: var(--border); display: block; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.88rem; }
+    
+    /* ---- PROFILE ---- */
+    .profile-header { background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%); border-radius: 20px; padding: 24px 20px; text-align: center; color: #fff; margin-bottom: 14px; position: relative; overflow: hidden; }
+    .profile-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--yellow); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 800; color: var(--green-dark); margin: 0 auto 12px; border: 3px solid rgba(255,255,255,0.5); }
+    .profile-name { font-family: 'Baloo 2', cursive; font-size: 1.2rem; font-weight: 800; }
+    .profile-role { font-size: 0.8rem; opacity: 0.8; }
+    .profile-stats { display: flex; gap: 12px; justify-content: center; margin-top: 16px; }
+    .profile-stat { text-align: center; }
+    .profile-stat-val { font-family: 'Baloo 2', cursive; font-size: 1.3rem; font-weight: 800; }
+    .profile-stat-label { font-size: 0.68rem; opacity: 0.75; }
+    
+    /* ---- CHART ---- */
+    .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 100px; padding: 0 4px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar { border-radius: 6px 6px 0 0; width: 100%; background: linear-gradient(to top, var(--green-dark), var(--green-light)); min-height: 4px; transition: height 0.5s ease; }
+    .bar-label { font-size: 0.6rem; color: var(--text-muted); font-weight: 600; }
+    
+    /* ---- FILTER ---- */
+    .filter-row { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+    .filter-row::-webkit-scrollbar { display: none; }
+    
+    /* ---- SCROLL SNAP ---- */
+    .scroll-snap { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 8px; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
+    .scroll-snap::-webkit-scrollbar { display: none; }
+    .scroll-snap > * { scroll-snap-align: start; flex-shrink: 0; }
+    
+    /* ---- NOTICE ---- */
+    .notice-item { background: var(--card); border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 10px; display: flex; gap: 12px; }
+    .notice-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--green-pale); display: flex; align-items: center; justify-content: center; color: var(--green); font-size: 1rem; flex-shrink: 0; }
+    .notice-title { font-weight: 600; font-size: 0.88rem; margin-bottom: 3px; }
+    .notice-body { font-size: 0.78rem; color: var(--text-muted); }
+    
+    /* ---- ADMIN PANEL ---- */
+    .admin-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 16px; }
+    .admin-nav::-webkit-scrollbar { display: none; }
+    .admin-nav-btn { flex-shrink: 0; padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--card); font-size: 0.78rem; font-weight: 600; cursor: pointer; color: var(--text-muted); }
+    .admin-nav-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+    
+    /* ---- INPUT ROW ---- */
+    .input-row { display: flex; gap: 10px; align-items: center; }
+    .input-row .form-input { flex: 1; }
+    
+    /* Floating Action Button */
+    .fab { position: fixed; bottom: 88px; right: 20px; width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; box-shadow: 0 4px 16px rgba(26,122,59,0.4); cursor: pointer; z-index: 50; border: none; transition: all 0.2s; }
+    .fab:active { transform: scale(0.92); }
+    
+    /* Highlight box */
+    .highlight-box { background: linear-gradient(135deg, var(--green-pale), #f0faf0); border: 1px solid var(--green); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    
+    /* Star rating */
+    .stars { color: #f4c430; font-size: 1rem; letter-spacing: 2px; }
+    
+    /* QR placeholder */
+    .qr-box { background: #fff; border: 2px solid var(--border); border-radius: 14px; padding: 20px; text-align: center; }
+    .qr-inner { width: 120px; height: 120px; background: repeating-linear-gradient(0deg, transparent, transparent 10px, var(--border) 10px, var(--border) 11px), repeating-linear-gradient(90deg, transparent, transparent 10px, var(--border) 10px, var(--border) 11px); margin: 0 auto 10px; border-radius: 8px; }
+    
+    /* Search bar */
+    .search-bar { display: flex; align-items: center; background: var(--card); border: 1.5px solid var(--border); border-radius: 12px; padding: 0 12px; margin-bottom: 14px; }
+    .search-bar i { color: var(--text-muted); font-size: 0.95rem; }
+    .search-bar input { flex: 1; border: none; outline: none; padding: 12px 10px; font-size: 0.88rem; font-family: inherit; background: transparent; }
+    
+    /* Category pill */
+    .cat-pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 99px; font-size: 0.78rem; font-weight: 600; border: 1.5px solid; }
+    
+    .hidden { display: none !important; }
+    .text-center { text-align: center; }
+    .mt-8 { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .gap-8 { gap: 8px; }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .w-full { width: 100%; }
+    .text-sm { font-size: 0.82rem; }
+    .text-muted { color: var(--text-muted); }
+    .font-bold { font-weight: 700; }
+    .mb-8 { margin-bottom: 8px; }
+    .mb-14 { margin-bottom: 14px; }
+    .p-0 { padding: 0; }
+    .overflow-hidden { overflow: hidden; }
+    .rounded { border-radius: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="leaf-icon">🌱</div>
+  <div class="logo-big">Gram<span style="color:#f4c430">Safai</span></div>
+  <div class="logo-sub">RURAL WASTE MANAGEMENT SYSTEM • BY PAVAN</div>
+  <div class="progress"><div class="progress-bar"></div></div>
+</div>
+
+<!-- AUTH -->
+<div id="authScreen">
+  <div style="text-align:center;margin-bottom:28px;">
+    <div style="font-size:2.4rem;margin-bottom:8px;">🌿</div>
+    <div style="font-family:'Baloo 2',cursive;font-size:1.6rem;font-weight:800;color:#fff;">GramSafai</div>
+    <div style="color:rgba(255,255,255,0.8);font-size:0.78rem;margin-top:4px;">Rural Waste Management Reporting System</div>
+    <div style="color:rgba(255,255,255,0.6);font-size:0.7rem;margin-top:2px;">by Pavan</div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchAuthTab('login')">Login</div>
+      <div class="auth-tab" onclick="switchAuthTab('register')">Register</div>
+    </div>
+    
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="loginEmail" placeholder="your@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()">Sign In 🌿</button>
+      <div style="text-align:center;margin-top:14px;font-size:0.78rem;color:var(--text-muted);">
+        <a href="#" onclick="fillAdmin()" style="color:var(--green);font-weight:600;">Admin Login</a>
+      </div>
+    </div>
+    
+    <!-- REGISTER -->
+    <div id="registerForm" class="hidden">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="regName" placeholder="Your name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="regEmail" placeholder="your@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="tel" class="form-input" id="regPhone" placeholder="+91 98765 43210" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Village / Ward</label>
+        <select class="form-select" id="regVillage">
+          <option>Select your village</option>
+          <option>Rampur</option><option>Shivpur</option><option>Krishnapur</option>
+          <option>Laxmipur</option><option>Govindpur</option><option>Nandpur</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="regPassword" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" onclick="doRegister()">Create Account 🌱</button>
+    </div>
+    
+    <div id="authMsg" style="margin-top:12px;font-size:0.82rem;text-align:center;"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">Gram<span>Safai</span></div>
+    <div class="topbar-right">
+      <div class="notif-btn" onclick="showNotifications()">
+        <i class="fas fa-bell"></i>
+        <span class="notif-badge" id="notifCount">3</span>
+      </div>
+      <div class="topbar-avatar" id="avatarBtn" onclick="navTo('profile')">P</div>
+    </div>
+  </div>
+
+  <!-- PAGES -->
+
+  <!-- HOME PAGE -->
+  <div class="page active" id="page-home">
+    <div class="hero">
+      <div class="hero-title">Welcome back! 👋</div>
+      <div class="hero-sub" id="heroSubtext">Help keep your village clean and green.</div>
+      <button class="hero-btn" onclick="openReportModal()">📸 Report Waste</button>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-value" id="statMyReports">0</div>
+        <div class="stat-label">My Reports</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-value" id="statResolved">0</div>
+        <div class="stat-label">Resolved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-value" id="statPoints">0</div>
+        <div class="stat-label">My Points</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🌿</div>
+        <div class="stat-value" id="statVillageRank">#–</div>
+        <div class="stat-label">Village Rank</div>
+      </div>
+    </div>
+    
+    <!-- Quick actions -->
+    <div class="card">
+      <div class="card-title"><i class="fas fa-bolt"></i> Quick Actions</div>
+      <div class="waste-grid">
+        <div class="waste-item" onclick="quickReport('Garbage')">🗑️<span>Garbage</span></div>
+        <div class="waste-item" onclick="quickReport('Sewage')">💧<span>Sewage</span></div>
+        <div class="waste-item" onclick="quickReport('Burning')">🔥<span>Burning</span></div>
+        <div class="waste-item" onclick="quickReport('Plastic')">♻️<span>Plastic</span></div>
+        <div class="waste-item" onclick="quickReport('Dead Animal')">🐄<span>Dead Animal</span></div>
+        <div class="waste-item" onclick="openReportModal()">➕<span>More</span></div>
+      </div>
+    </div>
+    
+    <!-- Map -->
+    <div class="section-header">
+      <div class="section-title">🗺️ Waste Hotspots</div>
+      <div class="section-link" onclick="navTo('map')">View Map</div>
+    </div>
+    <div class="map-container">
+      <div class="map-pin">📍</div>
+      <div>Live hotspot map</div>
+      <div style="font-size:0.75rem;">3 active reports near you</div>
+    </div>
+    
+    <!-- Recent reports -->
+    <div class="section-header mt-16">
+      <div class="section-title">📋 Recent Reports</div>
+      <div class="section-link" onclick="navTo('reports')">See All</div>
+    </div>
+    <div id="homeRecentReports"><div class="loader"><div class="loader-spin"></div></div></div>
+    
+    <!-- Weekly collection schedule -->
+    <div class="section-header mt-16">
+      <div class="section-title">🚛 This Week's Schedule</div>
+    </div>
+    <div id="homeSchedule"></div>
+    
+    <!-- Eco tip -->
+    <div class="highlight-box">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">💡 Daily Eco Tip</div>
+      <div id="ecoTip" style="font-size:0.85rem;color:var(--text);"></div>
+    </div>
+  </div>
+
+  <!-- REPORTS PAGE -->
+  <div class="page" id="page-reports">
+    <div class="section-title" style="margin-bottom:14px;">📋 Waste Reports</div>
+    <div class="search-bar">
+      <i class="fas fa-search"></i>
+      <input type="text" placeholder="Search reports..." id="reportSearch" oninput="filterReports()" />
+    </div>
+    <div class="filter-row" id="reportFilters">
+      <div class="chip selected" onclick="setReportFilter('all',this)">All</div>
+      <div class="chip" onclick="setReportFilter('pending',this)">Pending</div>
+      <div class="chip" onclick="setReportFilter('inprogress',this)">In Progress</div>
+      <div class="chip" onclick="setReportFilter('resolved',this)">Resolved</div>
+      <div class="chip" onclick="setReportFilter('mine',this)">My Reports</div>
+    </div>
+    <div id="reportsList"><div class="loader"><div class="loader-spin"></div></div></div>
+    <button class="fab" onclick="openReportModal()"><i class="fas fa-plus"></i></button>
+  </div>
+
+  <!-- MAP PAGE -->
+  <div class="page" id="page-map">
+    <div class="section-title" style="margin-bottom:14px;">🗺️ Waste Map</div>
+    <div class="tabs" id="mapTabs">
+      <div class="tab active" onclick="setMapTab('hotspots',this)">Hotspots</div>
+      <div class="tab" onclick="setMapTab('collection',this)">Collection Routes</div>
+      <div class="tab" onclick="setMapTab('bins',this)">Bin Locations</div>
+    </div>
+    <div class="map-container" style="height:300px;">
+      <div class="map-pin">🗺️</div>
+      <div id="mapLabel">Waste Hotspot Map</div>
+      <div style="font-size:0.75rem;margin-top:4px;">Powered by GramSafai GPS</div>
+    </div>
+    <div class="card mt-16">
+      <div class="card-title"><i class="fas fa-circle" style="color:var(--red);font-size:0.7rem;"></i> Active Hotspots Near You</div>
+      <div id="mapHotspots"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fas fa-dumpster"></i> Nearby Collection Bins</div>
+      <div id="mapBins"></div>
+    </div>
+  </div>
+
+  <!-- COMMUNITY PAGE -->
+  <div class="page" id="page-community">
+    <div class="section-title" style="margin-bottom:14px;">🤝 Community</div>
+    <div class="tabs">
+      <div class="tab active" onclick="setCommunityTab('feed',this)">Feed</div>
+      <div class="tab" onclick="setCommunityTab('leaderboard',this)">Leaderboard</div>
+      <div class="tab" onclick="setCommunityTab('drives',this)">Drives</div>
+      <div class="tab" onclick="setCommunityTab('notices',this)">Notices</div>
+    </div>
+    <div id="communityFeed"></div>
+    <div id="communityLeaderboard" class="hidden"></div>
+    <div id="communityDrives" class="hidden"></div>
+    <div id="communityNotices" class="hidden"></div>
+  </div>
+
+  <!-- REWARDS PAGE -->
+  <div class="page" id="page-rewards">
+    <div class="section-title" style="margin-bottom:14px;">🏆 Rewards & Points</div>
+    <div class="reward-card">
+      <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--yellow-dark);margin-bottom:6px;">Your Total Points</div>
+      <div class="reward-points" id="totalPoints">0</div>
+      <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Keep reporting to earn more! 🌿</div>
+      <div style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">
+          <span>Progress to next level</span><span id="levelLabel">Eco Warrior</span>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-fill" id="levelProgress" style="width:0%"></div></div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title"><i class="fas fa-star"></i> How to Earn Points</div>
+      <div id="earnList"></div>
+    </div>
+    
+    <div class="section-header">
+      <div class="section-title">🎁 Redeem Rewards</div>
+    </div>
+    <div id="rewardsList"></div>
+    
+    <div class="card">
+      <div class="card-title"><i class="fas fa-history"></i> Points History</div>
+      <div id="pointsHistory"></div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title"><i class="fas fa-medal"></i> Your Badges</div>
+      <div id="badgesList" style="display:flex;flex-wrap:wrap;gap:10px;"></div>
+    </div>
+  </div>
+
+  <!-- PROFILE PAGE -->
+  <div class="page" id="page-profile">
+    <div class="profile-header">
+      <div class="profile-avatar" id="profileAvatar">P</div>
+      <div class="profile-name" id="profileName">User</div>
+      <div class="profile-role" id="profileRole">Village Member</div>
+      <div class="profile-stats">
+        <div class="profile-stat"><div class="profile-stat-val" id="ps1">0</div><div class="profile-stat-label">Reports</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="ps2">0</div><div class="profile-stat-label">Resolved</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="ps3">0</div><div class="profile-stat-label">Points</div></div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title"><i class="fas fa-user"></i> Personal Info</div>
+      <div class="setting-row"><div><div class="setting-label" id="pi-name">–</div><div class="setting-sub">Full Name</div></div><i class="fas fa-pen" style="color:var(--text-muted);font-size:0.85rem;"></i></div>
+      <div class="setting-row"><div><div class="setting-label" id="pi-email">–</div><div class="setting-sub">Email</div></div></div>
+      <div class="setting-row"><div><div class="setting-label" id="pi-phone">–</div><div class="setting-sub">Phone</div></div></div>
+      <div class="setting-row"><div><div class="setting-label" id="pi-village">–</div><div class="setting-sub">Village</div></div></div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title"><i class="fas fa-bell"></i> Notifications</div>
+      <div class="setting-row"><div><div class="setting-label">Push Notifications</div><div class="setting-sub">Alerts for your reports</div></div><label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label></div>
+      <div class="setting-row"><div><div class="setting-label">SMS Alerts</div><div class="setting-sub">Collection reminders</div></div><label class="toggle"><input type="checkbox" /><span class="toggle-slider"></span></label></div>
+      <div class="setting-row"><div><div class="setting-label">Community Updates</div><div class="setting-sub">Nearby drive events</div></div><label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label></div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title"><i class="fas fa-cog"></i> Settings</div>
+      <div class="setting-row" onclick="showLanguageModal()"><div><div class="setting-label">Language</div><div class="setting-sub">English / हिंदी / తెలుగు</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+      <div class="setting-row"><div><div class="setting-label">Dark Mode</div></div><label class="toggle"><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()" /><span class="toggle-slider"></span></label></div>
+      <div class="setting-row" onclick="showQRCode()"><div><div class="setting-label">My QR Code</div><div class="setting-sub">For collection tracking</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+      <div class="setting-row" onclick="showAnalytics()"><div><div class="setting-label">My Analytics</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+      <div class="setting-row" onclick="showFeedback()"><div><div class="setting-label">Give Feedback</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+      <div class="setting-row" onclick="showHelp()"><div><div class="setting-label">Help & Support</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);"></i></div>
+      <div class="setting-row" onclick="doLogout()"><div><div class="setting-label" style="color:var(--red);">Logout</div></div><i class="fas fa-sign-out-alt" style="color:var(--red);"></i></div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title"><i class="fas fa-chart-bar"></i> My Activity</div>
+      <div class="bar-chart" id="myActivityChart" style="height:120px;"></div>
+      <div style="font-size:0.7rem;color:var(--text-muted);text-align:center;margin-top:8px;">Reports this week</div>
+    </div>
+  </div>
+
+  <!-- ADMIN PAGE -->
+  <div class="page" id="page-admin">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="font-size:1.5rem;">🛡️</div>
+      <div>
+        <div class="section-title">Admin Panel</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">GramSafai Management</div>
+      </div>
+    </div>
+    
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value" id="adminTotalReports">0</div><div class="stat-label">Total Reports</div></div>
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="adminTotalUsers">0</div><div class="stat-label">Total Users</div></div>
+      <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-value" id="adminPending">0</div><div class="stat-label">Pending</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="adminResolved">0</div><div class="stat-label">Resolved</div></div>
+    </div>
+    
+    <div class="admin-nav" id="adminNav">
+      <div class="admin-nav-btn active" onclick="setAdminTab('reports',this)">📋 Reports</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('users',this)">👥 Users</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('workers',this)">👷 Workers</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('schedule',this)">📅 Schedule</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('analytics',this)">📊 Analytics</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('notices',this)">📢 Notices</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('zones',this)">🗺️ Zones</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('settings',this)">⚙️ Settings</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('export',this)">📤 Export</div>
+      <div class="admin-nav-btn" onclick="setAdminTab('feedback',this)">💬 Feedback</div>
+    </div>
+    
+    <div id="adminContent"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="navTo('home')" id="nav-home"><i class="fas fa-home"></i><span>Home</span></div>
+    <div class="nav-item" onclick="navTo('reports')" id="nav-reports"><i class="fas fa-clipboard-list"></i><span>Reports</span></div>
+    <div class="nav-item" onclick="navTo('map')" id="nav-map"><i class="fas fa-map-marked-alt"></i><span>Map</span></div>
+    <div class="nav-item" onclick="navTo('community')" id="nav-community"><i class="fas fa-users"></i><span>Community</span></div>
+    <div class="nav-item" onclick="navTo('rewards')" id="nav-rewards"><i class="fas fa-trophy"></i><span>Rewards</span></div>
+    <div class="nav-item" onclick="navTo('profile')" id="nav-profile"><i class="fas fa-user-circle"></i><span>Profile</span></div>
+    <div class="nav-item" onclick="navTo('admin')" id="nav-admin" style="display:none;"><i class="fas fa-shield-alt"></i><span>Admin</span></div>
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- Report Modal -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal">
+    <div class="modal-handle" onclick="closeModal('reportModal')"></div>
+    <div class="modal-title">📸 Report Waste Issue</div>
+    <div class="form-group">
+      <label class="form-label">Waste Type</label>
+      <div class="waste-grid" id="wasteTypeGrid">
+        <div class="waste-item" onclick="selectWasteType('Garbage Dump',this)">🗑️<span>Garbage</span></div>
+        <div class="waste-item" onclick="selectWasteType('Open Sewage',this)">💧<span>Sewage</span></div>
+        <div class="waste-item" onclick="selectWasteType('Open Burning',this)">🔥<span>Burning</span></div>
+        <div class="waste-item" onclick="selectWasteType('Plastic Waste',this)">♻️<span>Plastic</span></div>
+        <div class="waste-item" onclick="selectWasteType('E-Waste',this)">💻<span>E-Waste</span></div>
+        <div class="waste-item" onclick="selectWasteType('Dead Animal',this)">🐄<span>Dead Animal</span></div>
+        <div class="waste-item" onclick="selectWasteType('Construction Debris',this)">🧱<span>Debris</span></div>
+        <div class="waste-item" onclick="selectWasteType('Chemical Waste',this)">⚗️<span>Chemical</span></div>
+        <div class="waste-item" onclick="selectWasteType('Other',this)">❓<span>Other</span></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-input" id="reportDesc" rows="3" placeholder="Describe the waste issue..." style="resize:none;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Location</label>
+      <input type="text" class="form-input" id="reportLocation" placeholder="Enter location or use GPS" />
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="useGPS()"><i class="fas fa-crosshairs"></i> Use GPS</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Severity</label>
+      <div class="chip-row" id="severityChips">
+        <div class="chip" onclick="selectSeverity('Low',this)">🟢 Low</div>
+        <div class="chip" onclick="selectSeverity('Medium',this)">🟡 Medium</div>
+        <div class="chip selected" onclick="selectSeverity('High',this)">🔴 High</div>
+        <div class="chip" onclick="selectSeverity('Critical',this)">🚨 Critical</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Photo</label>
+      <div class="photo-upload" onclick="triggerPhotoUpload()">
+        <i class="fas fa-camera"></i>
+        <div>Tap to add photo</div>
+        <div style="font-size:0.72rem;margin-top:4px;">Supports JPG, PNG</div>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" style="display:none;" onchange="handlePhoto(event)" />
+      <div id="photoPreview" class="hidden" style="margin-top:8px;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Anonymous Report?</label>
+      <label class="toggle"><input type="checkbox" id="anonToggle" /><span class="toggle-slider"></span></label>
+    </div>
+    <button class="btn btn-primary" onclick="submitReport()">Submit Report 🌿</button>
+    <button class="btn btn-outline" style="margin-top:10px;" onclick="closeModal('reportModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- Notifications Modal -->
+<div class="modal-overlay" id="notifModal">
+  <div class="modal">
+    <div class="modal-handle" onclick="closeModal('notifModal')"></div>
+    <div class="modal-title">🔔 Notifications</div>
+    <div id="notifList"></div>
+    <button class="btn btn-outline btn-sm" onclick="markAllRead();closeModal('notifModal')">Mark All Read</button>
+  </div>
+</div>
+
+<!-- Language Modal -->
+<div class="modal-overlay" id="langModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🌐 Select Language</div>
+    <div class="chip-row">
+      <div class="chip selected">English</div>
+      <div class="chip" onclick="showToast('Hindi support coming soon!')">हिंदी</div>
+      <div class="chip" onclick="showToast('Telugu support coming soon!')">తెలుగు</div>
+      <div class="chip" onclick="showToast('Tamil support coming soon!')">தமிழ்</div>
+      <div class="chip" onclick="showToast('Kannada support coming soon!')">ಕನ್ನಡ</div>
+    </div>
+    <button class="btn btn-primary" onclick="closeModal('langModal')">Save</button>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div class="modal-overlay" id="qrModal">
+  <div class="modal">
+    <div class="modal-handle" onclick="closeModal('qrModal')"></div>
+    <div class="modal-title">📱 My QR Code</div>
+    <div class="qr-box">
+      <div class="qr-inner"></div>
+      <div style="font-size:0.8rem;color:var(--text-muted);">Scan at collection point</div>
+      <div id="qrUserId" style="font-family:monospace;font-size:0.7rem;margin-top:6px;color:var(--text-muted);"></div>
+    </div>
+    <div class="alert alert-info mt-16"><i class="fas fa-info-circle"></i><span>Show this QR to the waste collector to earn bonus points!</span></div>
+    <button class="btn btn-primary" onclick="closeModal('qrModal')">Done</button>
+  </div>
+</div>
+
+<!-- Analytics Modal -->
+<div class="modal-overlay" id="analyticsModal">
+  <div class="modal">
+    <div class="modal-handle" onclick="closeModal('analyticsModal')"></div>
+    <div class="modal-title">📊 My Analytics</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value" id="anTotal">0</div><div class="stat-label">Total Reports</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" id="anResolved">0</div><div class="stat-label">Resolved</div></div>
+      <div class="stat-card"><div class="stat-icon">⏱️</div><div class="stat-value" id="anAvg">2d</div><div class="stat-label">Avg Resolution</div></div>
+      <div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-value" id="anRank">#1</div><div class="stat-label">Village Rank</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><i class="fas fa-chart-pie"></i> Report Types</div>
+      <div id="typePieChart"></div>
+    </div>
+    <button class="btn btn-outline" onclick="closeModal('analyticsModal')">Close</button>
+  </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal">
+    <div class="modal-handle" onclick="closeModal('feedbackModal')"></div>
+    <div class="modal-title">💬 Give Feedback</div>
+    <div class="form-group">
+      <label class="form-label">Rate Your Experience</label>
+      <div style="font-size:2rem;letter-spacing:8px;text-align:center;cursor:pointer;" id="starRating">⭐⭐⭐⭐⭐</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Your Feedback</label>
+      <textarea class="form-input" id="feedbackText" rows="4" placeholder="Tell us what you think..." style="resize:none;"></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="submitFeedback()">Submit Feedback</button>
+    <button class="btn btn-outline" style="margin-top:8px;" onclick="closeModal('feedbackModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="helpModal">
+  <div class="modal">
+    <div class="modal-handle" onclick="closeModal('helpModal')"></div>
+    <div class="modal-title">❓ Help & Support</div>
+    <div class="notice-item"><div class="notice-icon"><i class="fas fa-question-circle"></i></div><div><div class="notice-title">How to report waste?</div><div class="notice-body">Tap the green Report button, select waste type, add photo & location, and submit.</div></div></div>
+    <div class="notice-item"><div class="notice-icon"><i class="fas fa-trophy"></i></div><div><div class="notice-title">How do points work?</div><div class="notice-body">Earn points for reporting, attending drives, and getting issues resolved.</div></div></div>
+    <div class="notice-item"><div class="notice-icon"><i class="fas fa-phone"></i></div><div><div class="notice-title">Contact Admin</div><div class="notice-body">Email: pavankumar@gmail.com | Phone: 1800-XXX-XXXX</div></div></div>
+    <div class="notice-item"><div class="notice-icon"><i class="fas fa-book"></i></div><div><div class="notice-title">User Guide</div><div class="notice-body">Download the full GramSafai user guide PDF.</div></div></div>
+    <button class="btn btn-primary" onclick="closeModal('helpModal')">Got it!</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// =============================================
+// SUPABASE SETUP
+// =============================================
+const { createClient } = supabase;
+const SUPABASE_URL = 'https://ndywxgfcvjmmyzlmvfpz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6WyJgMSx_paHk4LoVWjfAg_jWJijdkQ';
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const ADMIN_EMAIL = 'pavankumar@gmail.com';
+const ADMIN_PASSWORD = 'pavan@gmail.com';
+
+// =============================================
+// APP STATE
+// =============================================
+let currentUser = null;
+let isAdmin = false;
+let currentPage = 'home';
+let reportFilter = 'all';
+let selectedWasteType = '';
+let selectedSeverity = 'High';
+let allReports = [];
+let myPoints = 0;
+
+// =============================================
+// INIT
+// =============================================
+window.onload = async () => {
+  // Splash
+  setTimeout(async () => {
+    document.getElementById('splash').style.opacity = '0';
+    setTimeout(async () => {
+      document.getElementById('splash').style.display = 'none';
+      await checkSession();
+    }, 500);
+  }, 2500);
+};
+
+async function checkSession() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    isAdmin = currentUser.email === ADMIN_EMAIL;
+    showApp();
+  } else {
+    showAuth();
+  }
+}
+
+function showAuth() {
+  document.getElementById('authScreen').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  
+  const nav = document.getElementById('nav-admin');
+  if (isAdmin) nav.style.display = 'flex';
+  
+  // Update avatar
+  const name = currentUser.user_metadata?.full_name || currentUser.email;
+  const initial = name.charAt(0).toUpperCase();
+  document.getElementById('avatarBtn').textContent = initial;
+  document.getElementById('profileAvatar').textContent = initial;
+  
+  initApp();
+}
+
+async function initApp() {
+  loadHomeData();
+  loadEcoTip();
+  loadHomeSchedule();
+  setupProfileInfo();
+  loadRewards();
+  loadCommunityFeed();
+  loadMapData();
+  if (isAdmin) loadAdminData();
+}
+
+// =============================================
+// AUTH
+// =============================================
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+}
+
+function fillAdmin() {
+  document.getElementById('loginEmail').value = ADMIN_EMAIL;
+  document.getElementById('loginPassword').value = ADMIN_PASSWORD;
+  showToast('Admin credentials filled!');
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  if (!email || !pass) { showAuthMsg('Please fill all fields', 'error'); return; }
+  
+  showAuthMsg('Signing in...', 'info');
+  
+  // Admin special login
+  if (email === ADMIN_EMAIL && pass === ADMIN_PASSWORD) {
+    const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      // Try sign up for admin
+      const { data: su } = await db.auth.signUp({ email, password: pass, options: { data: { full_name: 'Pavan Kumar', role: 'admin' }}});
+      if (su?.user) { currentUser = su.user; isAdmin = true; showApp(); return; }
+    } else {
+      currentUser = data.user; isAdmin = true; showApp(); return;
+    }
+  }
+  
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+  if (error) { showAuthMsg(error.message, 'error'); return; }
+  currentUser = data.user;
+  isAdmin = currentUser.email === ADMIN_EMAIL;
+  showApp();
+}
+
+async function doRegister() {
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const village = document.getElementById('regVillage').value;
+  const pass = document.getElementById('regPassword').value;
+  
+  if (!name || !email || !pass || village === 'Select your village') {
+    showAuthMsg('Please fill all required fields', 'error'); return;
+  }
+  
+  showAuthMsg('Creating account...', 'info');
+  const { data, error } = await db.auth.signUp({
+    email, password: pass,
+    options: { data: { full_name: name, phone, village, role: 'user', points: 0 }}
+  });
+  
+  if (error) { showAuthMsg(error.message, 'error'); return; }
+  currentUser = data.user;
+  isAdmin = false;
+  // Save to profiles table
+  await db.from('profiles').upsert({
+    id: currentUser.id, email, full_name: name, phone, village, points: 0, reports_count: 0, role: 'user'
+  });
+  showApp();
+}
+
+function showAuthMsg(msg, type) {
+  const el = document.getElementById('authMsg');
+  const colors = { error: 'var(--red)', info: 'var(--green)', success: 'var(--green)' };
+  el.style.color = colors[type] || '#333';
+  el.textContent = msg;
+}
+
+async function doLogout() {
+  await db.auth.signOut();
+  currentUser = null; isAdmin = false;
+  showAuth();
+  showToast('Logged out successfully');
+}
+
+// =============================================
+// NAVIGATION
+// =============================================
+function navTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page)?.classList.add('active');
+  currentPage = page;
+  
+  if (page === 'admin' && !isAdmin) { navTo('home'); return; }
+  if (page === 'reports') loadReports();
+  if (page === 'rewards') updateRewardsUI();
+  if (page === 'admin') loadAdminData();
+}
+
+// =============================================
+// HOME
+// =============================================
+async function loadHomeData() {
+  try {
+    const { data: reports } = await db.from('reports').select('*').eq('user_id', currentUser?.id);
+    const myReports = reports || generateDemoReports(3);
+    const resolved = myReports.filter(r => r.status === 'resolved').length;
+    
+    document.getElementById('statMyReports').textContent = myReports.length;
+    document.getElementById('statResolved').textContent = resolved;
+    document.getElementById('statPoints').textContent = myPoints = (myReports.length * 10 + resolved * 15);
+    document.getElementById('statVillageRank').textContent = '#' + Math.floor(Math.random()*20+1);
+    document.getElementById('totalPoints').textContent = myPoints;
+    
+    // Update profile stats
+    document.getElementById('ps1').textContent = myReports.length;
+    document.getElementById('ps2').textContent = resolved;
+    document.getElementById('ps3').textContent = myPoints;
+    document.getElementById('anTotal').textContent = myReports.length;
+    document.getElementById('anResolved').textContent = resolved;
+    
+    // Level progress
+    const pct = Math.min((myPoints % 100), 100);
+    document.getElementById('levelProgress').style.width = pct + '%';
+    
+    renderHomeReports(myReports.slice(0,3));
+    renderActivityChart();
+  } catch(e) {
+    renderHomeReports(generateDemoReports(3));
+  }
+}
+
+function renderHomeReports(reports) {
+  const container = document.getElementById('homeRecentReports');
+  if (!reports.length) { container.innerHTML = '<div class="empty-state"><i class="fas fa-clipboard"></i><p>No reports yet. Be the first to report!</p></div>'; return; }
+  container.innerHTML = reports.map(r => renderReportCard(r)).join('');
+}
+
+function renderReportCard(r) {
+  const statusBadge = { pending: 'badge-yellow', inprogress: 'badge-blue', resolved: 'badge-green', rejected: 'badge-red' };
+  const statusLabel = { pending: '⏳ Pending', inprogress: '🔄 In Progress', resolved: '✅ Resolved', rejected: '❌ Rejected' };
+  const s = r.status || 'pending';
+  return `<div class="report-card">
+    <div class="report-card-header">
+      <div>
+        <div class="report-card-title">${r.waste_type || 'Garbage Dump'}</div>
+        <div class="report-card-meta">📍 ${r.location || 'Rampur, Ward 3'} • ${formatDate(r.created_at)}</div>
+      </div>
+      <span class="badge ${statusBadge[s]}">${statusLabel[s]}</span>
+    </div>
+    <div class="report-card-body">${r.description || 'Large pile of garbage near the water tank.'}</div>
+    <div class="report-card-footer">
+      <div class="vote-row">
+        <button class="vote-btn" onclick="voteReport('${r.id}','up',this)">👍 ${r.upvotes||0}</button>
+        <button class="vote-btn" onclick="shareReport('${r.id}')">🔗 Share</button>
+      </div>
+      <span class="badge badge-orange">${r.severity || 'High'}</span>
+    </div>
+  </div>`;
+}
+
+function loadEcoTip() {
+  const tips = [
+    "Separate wet and dry waste before disposal to make recycling easier! ♻️",
+    "Composting kitchen waste reduces landfill burden by 40%. Start a compost pit today! 🌱",
+    "Say NO to single-use plastic. Carry a cloth bag when shopping! 👜",
+    "Used motor oil is toxic. Never pour it in drains or soil. Dispose at authorized centers. ⚠️",
+    "One tree can absorb 22kg of CO₂ per year. Plant a tree this weekend! 🌳",
+    "E-waste contains toxic metals. Collect old phones for proper e-waste recycling! 📱",
+    "Burning plastic releases dioxins — highly toxic compounds. Report open burning! 🚨"
+  ];
+  document.getElementById('ecoTip').textContent = tips[new Date().getDay() % tips.length];
+}
+
+function loadHomeSchedule() {
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat'];
+  const routes = ['Ward 1 & 2','Ward 3 & 4','Bazaar Area','Ward 5 & 6','All Wards','Village Square'];
+  const today = new Date();
+  const container = document.getElementById('homeSchedule');
+  container.innerHTML = days.slice(0,3).map((d,i) => {
+    const dt = new Date(today); dt.setDate(today.getDate() + i);
+    return `<div class="schedule-item">
+      <div class="schedule-day"><div class="schedule-day-num">${dt.getDate()}</div><div class="schedule-day-name">${d}</div></div>
+      <div><div class="schedule-info-title">🚛 ${routes[i]}</div><div class="schedule-info-sub">Collection: 7:00 AM – 10:00 AM</div></div>
+      ${i===0?'<span class="badge badge-green">Today</span>':''}
+    </div>`;
+  }).join('');
+}
+
+function renderActivityChart() {
+  const days = ['M','T','W','T','F','S','S'];
+  const vals = [2,0,3,1,4,2,1];
+  const max = Math.max(...vals) || 1;
+  document.getElementById('myActivityChart').innerHTML = days.map((d,i)=>`
+    <div class="bar-col">
+      <div class="bar" style="height:${(vals[i]/max)*80}px;"></div>
+      <div class="bar-label">${d}</div>
+    </div>`).join('');
+}
+
+// =============================================
+// REPORTS
+// =============================================
+async function loadReports() {
+  document.getElementById('reportsList').innerHTML = '<div class="loader"><div class="loader-spin"></div></div>';
+  try {
+    const { data } = await db.from('reports').select('*').order('created_at', { ascending: false });
+    allReports = data?.length ? data : generateDemoReports(8);
+  } catch(e) {
+    allReports = generateDemoReports(8);
+  }
+  filterReports();
+}
+
+function filterReports() {
+  const search = document.getElementById('reportSearch')?.value?.toLowerCase() || '';
+  let filtered = allReports;
+  if (reportFilter === 'mine') filtered = filtered.filter(r => r.user_id === currentUser?.id);
+  else if (reportFilter !== 'all') filtered = filtered.filter(r => r.status === reportFilter);
+  if (search) filtered = filtered.filter(r => (r.waste_type+r.location+r.description).toLowerCase().includes(search));
+  
+  const container = document.getElementById('reportsList');
+  if (!filtered.length) { container.innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><p>No reports found.</p></div>'; return; }
+  container.innerHTML = filtered.map(r => renderReportCard(r)).join('');
+}
+
+function setReportFilter(f, el) {
+  reportFilter = f;
+  document.querySelectorAll('#reportFilters .chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  filterReports();
+}
+
+// =============================================
+// REPORT MODAL
+// =============================================
+function openReportModal() { document.getElementById('reportModal').classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function selectWasteType(type, el) {
+  selectedWasteType = type;
+  document.querySelectorAll('#wasteTypeGrid .waste-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectSeverity(sev, el) {
+  selectedSeverity = sev;
+  document.querySelectorAll('#severityChips .chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function useGPS() {
+  navigator.geolocation?.getCurrentPosition(pos => {
+    document.getElementById('reportLocation').value = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+    showToast('📍 GPS location captured!');
+  }, () => {
+    document.getElementById('reportLocation').value = 'Rampur Village, Near Well';
+    showToast('📍 Default location set');
+  });
+}
+
+function triggerPhotoUpload() { document.getElementById('photoInput').click(); }
+
+function handlePhoto(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const preview = document.getElementById('photoPreview');
+    preview.classList.remove('hidden');
+    preview.innerHTML = `<img src="${ev.target.result}" style="width:100%;height:120px;object-fit:cover;border-radius:10px;" />`;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitReport() {
+  const desc = document.getElementById('reportDesc').value.trim();
+  const loc = document.getElementById('reportLocation').value.trim();
+  
+  if (!selectedWasteType) { showToast('Please select a waste type!'); return; }
+  if (!desc) { showToast('Please add a description!'); return; }
+  if (!loc) { showToast('Please add a location!'); return; }
+  
+  const report = {
+    user_id: currentUser?.id,
+    waste_type: selectedWasteType,
+    description: desc,
+    location: loc || 'Rampur Village',
+    severity: selectedSeverity,
+    status: 'pending',
+    upvotes: 0,
+    anonymous: document.getElementById('anonToggle').checked,
+    created_at: new Date().toISOString()
+  };
+  
+  try {
+    await db.from('reports').insert(report);
+  } catch(e) { /* offline demo */ }
+  
+  allReports.unshift({ ...report, id: 'local_' + Date.now() });
+  closeModal('reportModal');
+  showToast('✅ Report submitted! +10 points earned!');
+  myPoints += 10;
+  document.getElementById('statPoints').textContent = myPoints;
+  loadHomeData();
+}
+
+function quickReport(type) {
+  selectedWasteType = type;
+  openReportModal();
+  document.querySelectorAll('#wasteTypeGrid .waste-item').forEach(i => {
+    if (i.querySelector('span')?.textContent?.toLowerCase() === type.toLowerCase()) i.classList.add('selected');
+  });
+}
+
+// =============================================
+// COMMUNITY
+// =============================================
+let communityTab = 'feed';
+
+function setCommunityTab(tab, el) {
+  communityTab = tab;
+  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['feed','leaderboard','drives','notices'].forEach(t => {
+    document.getElementById('community' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('hidden');
+  });
+  document.getElementById('community' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+}
+
+function loadCommunityFeed() {
+  const posts = [
+    { user: 'Ravi Kumar', village: 'Rampur', text: 'Cleaned the main road near school! Great teamwork by all residents 🌿', time: '2h ago', likes: 24, type: 'drive' },
+    { user: 'Sunita Devi', village: 'Shivpur', text: 'Reported the garbage dump near temple — resolved in just 1 day! Kudos to the team!', time: '5h ago', likes: 18, type: 'achievement' },
+    { user: 'Manoj Patel', village: 'Krishnapur', text: 'Join us this Sunday for a mega cleanliness drive! Meet at village panchayat at 7AM.', time: '1d ago', likes: 41, type: 'drive' },
+    { user: 'Geeta Sharma', village: 'Laxmipur', text: 'Plastic waste collected from the pond area. 120 kg removed! 💪', time: '2d ago', likes: 67, type: 'achievement' },
+  ];
+  
+  document.getElementById('communityFeed').innerHTML = posts.map(p => `
+    <div class="card" style="padding:14px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green);">${p.user.charAt(0)}</div>
+        <div><div style="font-weight:600;font-size:0.88rem;">${p.user}</div><div style="font-size:0.72rem;color:var(--text-muted);">📍 ${p.village} • ${p.time}</div></div>
+        <span class="badge ${p.type==='drive'?'badge-blue':'badge-green'}" style="margin-left:auto;">${p.type==='drive'?'🚀 Drive':'🏆 Win'}</span>
+      </div>
+      <div style="font-size:0.85rem;color:var(--text);line-height:1.5;margin-bottom:10px;">${p.text}</div>
+      <div style="display:flex;gap:12px;">
+        <button class="vote-btn" onclick="this.classList.toggle('liked');this.innerHTML='❤️ '+(parseInt(this.innerHTML.split(' ')[1]||'0')+(this.classList.contains('liked')?1:-1));">❤️ ${p.likes}</button>
+        <button class="vote-btn">💬 Comment</button>
+        <button class="vote-btn">🔗 Share</button>
+      </div>
+    </div>`).join('');
+  
+  loadLeaderboard();
+  loadDrives();
+  loadNotices();
+}
+
+function loadLeaderboard() {
+  const leaders = [
+    { name: 'Sunita Devi', village: 'Rampur', points: 450, reports: 28, emoji: '👩' },
+    { name: 'Ravi Kumar', village: 'Shivpur', points: 380, reports: 22, emoji: '👨' },
+    { name: 'Manoj Patel', village: 'Krishnapur', points: 320, reports: 19, emoji: '👨' },
+    { name: 'Geeta Sharma', village: 'Laxmipur', points: 290, reports: 17, emoji: '👩' },
+    { name: 'Arjun Singh', village: 'Govindpur', points: 240, reports: 14, emoji: '👨' },
+    { name: 'Priya Nair', village: 'Nandpur', points: 210, reports: 12, emoji: '👩' },
+  ];
+  const rankClass = ['gold','silver','bronze','','',''];
+  const rankIcon = ['🥇','🥈','🥉','4','5','6'];
+  
+  document.getElementById('communityLeaderboard').innerHTML = `
+    <div class="alert alert-info"><i class="fas fa-info-circle"></i><span>Rankings update every Monday morning. Keep reporting!</span></div>
+    ${leaders.map((l,i) => `<div class="lb-item">
+      <div class="lb-rank ${rankClass[i]}">${rankIcon[i]}</div>
+      <div class="lb-avatar">${l.emoji}</div>
+      <div><div class="lb-name">${l.name}</div><div style="font-size:0.72rem;color:var(--text-muted);">📍 ${l.village} • ${l.reports} reports</div></div>
+      <div class="lb-points">${l.points}pts</div>
+    </div>`).join('')}`;
+}
+
+function loadDrives() {
+  const drives = [
+    { title: 'Mega Cleanliness Drive', date: 'Sun, May 12', place: 'Village Square, Rampur', joined: 34 },
+    { title: 'Pond Plastic Removal', date: 'Sat, May 18', place: 'Shivpur Pond Area', joined: 21 },
+    { title: 'School Campus Cleanup', date: 'Tue, May 21', place: 'Govt. School, Krishnapur', joined: 18 },
+  ];
+  document.getElementById('communityDrives').innerHTML = drives.map(d => `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div><div style="font-weight:700;font-size:0.92rem;">🚀 ${d.title}</div><div style="font-size:0.75rem;color:var(--text-muted);margin-top:3px;">📅 ${d.date} • 📍 ${d.place}</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="badge badge-blue">👥 ${d.joined} joined</span>
+        <button class="btn btn-primary btn-sm" onclick="showToast('Joined! +20 points on completion 🎉')">Join Drive</button>
+      </div>
+    </div>`).join('');
+}
+
+function loadNotices() {
+  const notices = [
+    { icon: 'fas fa-bullhorn', title: 'New Collection Schedule', body: 'Starting May 15, collection will happen twice a week — Tuesday & Friday.' },
+    { icon: 'fas fa-award', title: 'Monthly Top Reporter Award', body: 'Sunita Devi wins the April award! Congratulations! 🏆' },
+    { icon: 'fas fa-exclamation-triangle', title: 'No Burning Notice', body: 'Burning of waste is strictly prohibited. Violators will be fined ₹500.' },
+    { icon: 'fas fa-calendar', title: 'Panchayat Meeting', body: 'Monthly cleanliness review meeting on May 20 at 5 PM at Panchayat Hall.' },
+  ];
+  document.getElementById('communityNotices').innerHTML = notices.map(n => `
+    <div class="notice-item"><div class="notice-icon"><i class="${n.icon}"></i></div><div><div class="notice-title">${n.title}</div><div class="notice-body">${n.body}</div></div></div>`).join('');
+}
+
+// =============================================
+// MAP
+// =============================================
+function setMapTab(tab, el) {
+  document.querySelectorAll('#mapTabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const labels = { hotspots: 'Waste Hotspot Map', collection: 'Collection Routes', bins: 'Bin Locations' };
+  document.getElementById('mapLabel').textContent = labels[tab];
+}
+
+function loadMapData() {
+  const hotspots = [
+    { name: 'Near Water Tank', type: 'Garbage', severity: 'High', distance: '0.2 km' },
+    { name: 'Main Bazaar', type: 'Plastic', severity: 'Medium', distance: '0.5 km' },
+    { name: 'Riverside Area', type: 'Open Sewage', severity: 'Critical', distance: '0.8 km' },
+    { name: 'School Road', type: 'Burning', severity: 'High', distance: '1.1 km' },
+  ];
+  document.getElementById('mapHotspots').innerHTML = hotspots.map(h => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div><div style="font-size:0.88rem;font-weight:600;">${h.name}</div><div style="font-size:0.75rem;color:var(--text-muted);">${h.type}</div></div>
+      <div style="text-align:right;"><span class="badge badge-red">${h.severity}</span><div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px;">${h.distance}</div></div>
+    </div>`).join('');
+  
+  const bins = ['Near Panchayat Hall','Main Market Entry','School Gate','Temple Road','Bus Stand'];
+  document.getElementById('mapBins').innerHTML = bins.map((b,i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="width:8px;height:8px;border-radius:50%;background:${i<2?'var(--green)':'var(--yellow)'}"></div>
+      <div style="font-size:0.85rem;font-weight:500;">🗑️ ${b}</div>
+      <span class="badge ${i<2?'badge-green':'badge-yellow'}" style="margin-left:auto;">${i<2?'Available':'Partial'}</span>
+    </div>`).join('');
+}
+
+// =============================================
+// REWARDS
+// =============================================
+function updateRewardsUI() {
+  document.getElementById('totalPoints').textContent = myPoints;
+  const pct = Math.min((myPoints % 100), 100);
+  document.getElementById('levelProgress').style.width = pct + '%';
+  
+  const levels = [[0,'Eco Starter 🌱'],[50,'Eco Warrior ⚔️'],[100,'Eco Champion 🏆'],[200,'Eco Legend 🌟']];
+  const lvl = levels.reduce((acc,l) => myPoints >= l[0] ? l : acc, levels[0]);
+  document.getElementById('levelLabel').textContent = lvl[1];
+}
+
+function loadRewards() {
+  const earnItems = [
+    { icon: '📸', action: 'Submit a report', pts: '+10 pts' },
+    { icon: '✅', action: 'Report resolved', pts: '+15 pts' },
+    { icon: '👍', action: 'Report gets 10 upvotes', pts: '+5 pts' },
+    { icon: '🚀', action: 'Attend a drive', pts: '+20 pts' },
+    { icon: '📅', action: '7-day streak', pts: '+25 pts' },
+    { icon: '🔍', action: 'First report in area', pts: '+30 pts' },
+    { icon: '📷', action: 'Add photo to report', pts: '+5 pts' },
+  ];
+  document.getElementById('earnList').innerHTML = earnItems.map(e => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:10px;"><div style="font-size:1.2rem;">${e.icon}</div><div style="font-size:0.85rem;font-weight:500;">${e.action}</div></div>
+      <span class="badge badge-yellow">${e.pts}</span>
+    </div>`).join('');
+  
+  const rewardItems = [
+    { name: '🌱 Seedling Kit', cost: 50, desc: 'Native plant seedlings' },
+    { name: '🎨 Eco Tote Bag', cost: 80, desc: 'GramSafai branded bag' },
+    { name: '☕ Bamboo Cup', cost: 100, desc: 'Eco-friendly bamboo cup' },
+    { name: '📚 Farm Guide Book', cost: 150, desc: 'Sustainable farming guide' },
+    { name: '🌳 Tree Certificate', cost: 200, desc: 'Tree planted in your name' },
+    { name: '🏅 Village Champion', cost: 500, desc: 'Public recognition award' },
+  ];
+  document.getElementById('rewardsList').innerHTML = rewardItems.map(r => `
+    <div class="reward-card" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">
+      <div><div style="font-weight:700;">${r.name}</div><div style="font-size:0.75rem;color:var(--text-muted);">${r.desc}</div></div>
+      <div style="text-align:right;">
+        <div style="font-family:'Baloo 2',cursive;font-weight:800;color:var(--yellow-dark);">${r.cost}pts</div>
+        <button class="btn btn-yellow btn-sm" style="margin-top:4px;" onclick="redeemReward('${r.name}',${r.cost})">Redeem</button>
+      </div>
+    </div>`).join('');
+  
+  const history = [
+    { action: 'Submitted report', pts: '+10', time: 'Today' },
+    { action: 'Report resolved', pts: '+15', time: 'Yesterday' },
+    { action: 'Attended drive', pts: '+20', time: '3 days ago' },
+    { action: 'Redeemed Seedling Kit', pts: '-50', time: '1 week ago' },
+  ];
+  document.getElementById('pointsHistory').innerHTML = history.map(h => `
+    <div class="tl-item" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div><div style="font-size:0.85rem;font-weight:500;">${h.action}</div><div style="font-size:0.72rem;color:var(--text-muted);">${h.time}</div></div>
+      <div style="font-weight:700;color:${h.pts.startsWith('+')?'var(--green)':'var(--red)'};">${h.pts}</div>
+    </div>`).join('');
+  
+  const badges = ['🌱 Eco Starter', '📸 First Report', '🔥 Week Streak', '🤝 Team Player'];
+  document.getElementById('badgesList').innerHTML = badges.map(b => `
+    <div style="background:var(--green-pale);border:1px solid var(--green);border-radius:12px;padding:10px 14px;text-align:center;font-size:0.8rem;font-weight:600;color:var(--green);">${b}</div>`).join('');
+}
+
+function redeemReward(name, cost) {
+  if (myPoints < cost) { showToast(`Need ${cost - myPoints} more points!`); return; }
+  myPoints -= cost;
+  showToast(`🎁 Redeemed ${name}!`);
+  updateRewardsUI();
+}
+
+// =============================================
+// PROFILE
+// =============================================
+function setupProfileInfo() {
+  const meta = currentUser?.user_metadata || {};
+  const name = meta.full_name || currentUser?.email?.split('@')[0] || 'User';
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileRole').textContent = isAdmin ? '🛡️ Admin' : '🌿 Village Member';
+  document.getElementById('pi-name').textContent = name;
+  document.getElementById('pi-email').textContent = currentUser?.email || '–';
+  document.getElementById('pi-phone').textContent = meta.phone || '+91 98765 43210';
+  document.getElementById('pi-village').textContent = meta.village || 'Rampur';
+  document.getElementById('qrUserId').textContent = 'ID: ' + (currentUser?.id?.substring(0,8) || 'demo1234');
+}
+
+function showLanguageModal() { document.getElementById('langModal').classList.add('open'); }
+function showQRCode() { document.getElementById('qrModal').classList.add('open'); }
+function showAnalytics() { document.getElementById('analyticsModal').classList.add('open'); }
+function showFeedback() { document.getElementById('feedbackModal').classList.add('open'); }
+function showHelp() { document.getElementById('helpModal').classList.add('open'); }
+
+function toggleDarkMode() {
+  document.body.classList.toggle('dark');
+  showToast('Dark mode coming soon!');
+}
+
+// =============================================
+// NOTIFICATIONS
+// =============================================
+function showNotifications() {
+  const notifs = [
+    { icon: '✅', text: 'Your report at Bazaar Road was resolved!', time: '2h ago', unread: true },
+    { icon: '👍', text: 'Your report got 5 new upvotes', time: '5h ago', unread: true },
+    { icon: '🚀', text: 'New cleanliness drive this Sunday!', time: '1d ago', unread: true },
+    { icon: '🏆', text: 'You moved to #3 on the leaderboard!', time: '2d ago', unread: false },
+  ];
+  document.getElementById('notifList').innerHTML = notifs.map(n => `
+    <div style="display:flex;gap:12px;padding:12px;background:${n.unread?'var(--green-pale)':'transparent'};border-radius:12px;margin-bottom:8px;">
+      <div style="font-size:1.3rem;">${n.icon}</div>
+      <div><div style="font-size:0.85rem;font-weight:${n.unread?600:400};">${n.text}</div><div style="font-size:0.72rem;color:var(--text-muted);margin-top:3px;">${n.time}</div></div>
+    </div>`).join('');
+  document.getElementById('notifModal').classList.add('open');
+}
+
+function markAllRead() {
+  document.getElementById('notifCount').textContent = '0';
+  showToast('All notifications marked as read');
+}
+
+// =============================================
+// ADMIN
+// =============================================
+let adminTab = 'reports';
+
+function setAdminTab(tab, el) {
+  adminTab = tab;
+  document.querySelectorAll('.admin-nav-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderAdminContent();
+}
+
+async function loadAdminData() {
+  // Load stats
+  try {
+    const { data: reports } = await db.from('reports').select('*');
+    const { data: users } = await db.from('profiles').select('*');
+    const rpts = reports || generateDemoReports(15);
+    const usrs = users || [];
+    
+    document.getElementById('adminTotalReports').textContent = rpts.length;
+    document.getElementById('adminTotalUsers').textContent = usrs.length || 12;
+    document.getElementById('adminPending').textContent = rpts.filter(r=>r.status==='pending').length;
+    document.getElementById('adminResolved').textContent = rpts.filter(r=>r.status==='resolved').length;
+    allReports = rpts;
+  } catch(e) {
+    allReports = generateDemoReports(15);
+    document.getElementById('adminTotalReports').textContent = 15;
+    document.getElementById('adminTotalUsers').textContent = 12;
+    document.getElementById('adminPending').textContent = 7;
+    document.getElementById('adminResolved').textContent = 5;
+  }
+  renderAdminContent();
+}
+
+function renderAdminContent() {
+  const container = document.getElementById('adminContent');
+  
+  if (adminTab === 'reports') {
+    container.innerHTML = `
+      <div class="search-bar"><i class="fas fa-search"></i><input placeholder="Search reports..." /></div>
+      <div class="filter-row">
+        <div class="chip selected">All</div><div class="chip">Pending</div><div class="chip">In Progress</div><div class="chip">Resolved</div>
+      </div>
+      ${allReports.slice(0,10).map(r => `
+        <div class="report-card">
+          <div class="report-card-header">
+            <div><div class="report-card-title">${r.waste_type||'Garbage'}</div><div class="report-card-meta">📍 ${r.location||'Rampur'} • ${formatDate(r.created_at)}</div></div>
+            <span class="badge ${r.status==='resolved'?'badge-green':r.status==='inprogress'?'badge-blue':'badge-yellow'}">${r.status||'pending'}</span>
+          </div>
+          <div class="report-card-body">${r.description||'Garbage dump near water tank.'}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="updateStatus('${r.id}','inprogress')">In Progress</button>
+            <button class="btn btn-sm" style="background:var(--green);color:#fff;" onclick="updateStatus('${r.id}','resolved')">Resolve</button>
+            <button class="btn btn-sm btn-danger" onclick="updateStatus('${r.id}','rejected')">Reject</button>
+            <button class="btn btn-outline btn-sm" onclick="assignWorker('${r.id}')">Assign</button>
+          </div>
+        </div>`).join('')}`;
+  
+  } else if (adminTab === 'users') {
+    const users = [
+      { name: 'Ravi Kumar', email: 'ravi@example.com', village: 'Rampur', reports: 8, points: 120, joined: '2024-01-15' },
+      { name: 'Sunita Devi', email: 'sunita@example.com', village: 'Shivpur', reports: 14, points: 280, joined: '2024-02-01' },
+      { name: 'Manoj Patel', email: 'manoj@example.com', village: 'Krishnapur', reports: 6, points: 90, joined: '2024-03-10' },
+      { name: 'Geeta Sharma', email: 'geeta@example.com', village: 'Laxmipur', reports: 11, points: 190, joined: '2024-02-20' },
+    ];
+    container.innerHTML = `
+      <div class="search-bar"><i class="fas fa-search"></i><input placeholder="Search users..." /></div>
+      ${users.map(u => `
+        <div class="card" style="padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="width:40px;height:40px;border-radius:50%;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green);">${u.name.charAt(0)}</div>
+              <div><div style="font-weight:600;font-size:0.88rem;">${u.name}</div><div style="font-size:0.72rem;color:var(--text-muted);">${u.email}</div><div style="font-size:0.72rem;color:var(--text-muted);">📍 ${u.village}</div></div>
+            </div>
+            <div style="text-align:right;"><span class="badge badge-green">${u.points}pts</span><div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">${u.reports} reports</div></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-outline btn-sm" onclick="showToast('Message sent to ${u.name}')">💬 Message</button>
+            <button class="btn btn-outline btn-sm" onclick="showToast('Bonus points given!')">⭐ Give Points</button>
+            <button class="btn btn-sm btn-danger" onclick="showToast('User blocked!')">🚫 Block</button>
+          </div>
+        </div>`).join('')}`;
+  
+  } else if (adminTab === 'workers') {
+    const workers = [
+      { name: 'Babu Ram', id: 'W001', zone: 'Ward 1-2', status: 'On Duty', collections: 145 },
+      { name: 'Shyam Lal', id: 'W002', zone: 'Ward 3-4', status: 'Off Duty', collections: 112 },
+      { name: 'Krishna Das', id: 'W003', zone: 'Bazaar Area', status: 'On Duty', collections: 98 },
+      { name: 'Ramesh Singh', id: 'W004', zone: 'Ward 5-6', status: 'On Leave', collections: 87 },
+    ];
+    container.innerHTML = `
+      <button class="btn btn-primary" style="margin-bottom:14px;" onclick="showToast('Add Worker form coming!')">+ Add Worker</button>
+      ${workers.map(w => `
+        <div class="card" style="padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div style="width:40px;height:40px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">👷</div>
+              <div><div style="font-weight:600;">${w.name}</div><div style="font-size:0.75rem;color:var(--text-muted);">${w.id} • ${w.zone}</div></div>
+            </div>
+            <span class="badge ${w.status==='On Duty'?'badge-green':w.status==='Off Duty'?'badge-yellow':'badge-red'}">${w.status}</span>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:10px;font-size:0.78rem;color:var(--text-muted);">
+            <span>📦 ${w.collections} collections</span>
+            <span>⭐ 4.5 rating</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn btn-outline btn-sm" onclick="showToast('Tracking ${w.name}...')">📍 Track</button>
+            <button class="btn btn-outline btn-sm" onclick="showToast('Assigning task...')">📋 Assign Task</button>
+          </div>
+        </div>`).join('')}`;
+  
+  } else if (adminTab === 'schedule') {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-title"><i class="fas fa-calendar"></i> Collection Schedule</div>
+        <button class="btn btn-primary btn-sm" style="margin-bottom:14px;" onclick="showToast('Add schedule form!')">+ Add Schedule</button>
+        ${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((day,i) => `
+          <div class="setting-row">
+            <div><div class="setting-label">${day}</div><div class="setting-sub">Ward ${(i%3)*2+1} & ${(i%3)*2+2} • 7-10 AM</div></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="showToast('Edit schedule')">✏️</button>
+              <label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  
+  } else if (adminTab === 'analytics') {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-title"><i class="fas fa-chart-line"></i> Reports Overview</div>
+        <div class="bar-chart" style="height:140px;">
+          ${['Jan','Feb','Mar','Apr','May','Jun','Jul'].map((m,i) => {
+            const h = [40,60,35,80,55,90,45][i];
+            return `<div class="bar-col"><div class="bar" style="height:${h}%;"></div><div class="bar-label">${m}</div></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">⏱️</div><div class="stat-value">2.3d</div><div class="stat-label">Avg Resolution</div></div>
+        <div class="stat-card"><div class="stat-icon">😊</div><div class="stat-value">89%</div><div class="stat-label">Satisfaction</div></div>
+        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value">+24%</div><div class="stat-label">This Month</div></div>
+        <div class="stat-card"><div class="stat-icon">🌿</div><div class="stat-value">340kg</div><div class="stat-label">Waste Removed</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="fas fa-chart-pie"></i> Waste Types</div>
+        ${[['Garbage',45],['Sewage',20],['Plastic',18],['Burning',10],['Other',7]].map(([t,p]) => `
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:4px;"><span>${t}</span><span>${p}%</span></div>
+            <div class="progress-bar-wrap"><div class="progress-fill" style="width:${p}%;"></div></div>
+          </div>`).join('')}
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="fas fa-map-marker-alt"></i> Top Hotspot Villages</div>
+        ${[['Rampur',34],['Shivpur',28],['Krishnapur',21],['Laxmipur',19]].map(([v,c]) => `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:0.85rem;font-weight:500;">📍 ${v}</span>
+            <span class="badge badge-red">${c} reports</span>
+          </div>`).join('')}
+      </div>`;
+  
+  } else if (adminTab === 'notices') {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-title"><i class="fas fa-plus"></i> Post Notice</div>
+        <div class="form-group"><label class="form-label">Title</label><input class="form-input" id="noticeTitle" placeholder="Notice title..." /></div>
+        <div class="form-group"><label class="form-label">Message</label><textarea class="form-input" id="noticeBody" rows="3" placeholder="Notice content..." style="resize:none;"></textarea></div>
+        <div class="form-group">
+          <label class="form-label">Target</label>
+          <select class="form-select"><option>All Villages</option><option>Rampur</option><option>Shivpur</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="postNotice()">📢 Post Notice</button>
+      </div>
+      <div class="section-header"><div class="section-title">Posted Notices</div></div>
+      ${['New collection schedule from May 15','Burning ban in effect','Monthly meeting on May 20'].map(n => `
+        <div class="notice-item">
+          <div class="notice-icon"><i class="fas fa-bullhorn"></i></div>
+          <div style="flex:1;"><div class="notice-title">${n}</div><div class="notice-body">Posted 2 days ago • All Villages</div></div>
+          <button class="btn btn-sm btn-danger" onclick="showToast('Notice deleted')">🗑️</button>
+        </div>`).join('')}`;
+  
+  } else if (adminTab === 'zones') {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-title"><i class="fas fa-map"></i> Manage Zones</div>
+        <button class="btn btn-primary btn-sm" style="margin-bottom:14px;">+ Add Zone</button>
+        ${['Ward 1 & 2 – North','Ward 3 & 4 – South','Bazaar Area – Central','Ward 5 & 6 – East'].map((z,i) => `
+          <div class="setting-row">
+            <div><div class="setting-label">${z}</div><div class="setting-sub">Worker: ${['Babu Ram','Shyam Lal','Krishna Das','Ramesh Singh'][i]}</div></div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-outline btn-sm">✏️</button>
+              <label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label>
+            </div>
+          </div>`).join('')}
+      </div>`;
+  
+  } else if (adminTab === 'settings') {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-title"><i class="fas fa-cog"></i> System Settings</div>
+        <div class="setting-row"><div><div class="setting-label">Auto-assign Reports</div><div class="setting-sub">Automatically assign to nearest worker</div></div><label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label></div>
+        <div class="setting-row"><div><div class="setting-label">SMS Alerts</div><div class="setting-sub">Send SMS on status change</div></div><label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label></div>
+        <div class="setting-row"><div><div class="setting-label">Public Leaderboard</div><div class="setting-sub">Show leaderboard to all users</div></div><label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label></div>
+        <div class="setting-row"><div><div class="setting-label">Anonymous Reports</div><div class="setting-sub">Allow anonymous reporting</div></div><label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label></div>
+        <div class="setting-row"><div><div class="setting-label">Maintenance Mode</div><div class="setting-sub">Disable app for maintenance</div></div><label class="toggle"><input type="checkbox" /><span class="toggle-slider"></span></label></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="fas fa-paint-brush"></i> App Branding</div>
+        <div class="form-group"><label class="form-label">App Name</label><input class="form-input" value="GramSafai" /></div>
+        <div class="form-group"><label class="form-label">Admin Email</label><input class="form-input" value="pavankumar@gmail.com" /></div>
+        <div class="form-group"><label class="form-label">Helpline Number</label><input class="form-input" value="1800-XXX-XXXX" /></div>
+        <button class="btn btn-primary" onclick="showToast('Settings saved!')">Save Settings</button>
+      </div>`;
+  
+  } else if (adminTab === 'export') {
+    container.innerHTML = `
+      <div class="card">
+        <div class="card-title"><i class="fas fa-file-export"></i> Export Data</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <button class="btn btn-primary" onclick="exportData('reports')">📋 Export Reports (CSV)</button>
+          <button class="btn btn-primary" onclick="exportData('users')">👥 Export Users (CSV)</button>
+          <button class="btn btn-primary" onclick="exportData('analytics')">📊 Export Analytics (PDF)</button>
+          <button class="btn btn-outline" onclick="showToast('Monthly report generated!')">📄 Monthly Report</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="fas fa-database"></i> Database</div>
+        <div class="setting-row"><div><div class="setting-label">Auto Backup</div></div><label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label></div>
+        <div class="setting-row"><div><div class="setting-label">Last Backup</div><div class="setting-sub">Today, 3:00 AM</div></div></div>
+        <button class="btn btn-outline btn-sm" onclick="showToast('Backup started!')">🔄 Backup Now</button>
+      </div>`;
+  
+  } else if (adminTab === 'feedback') {
+    const feedbacks = [
+      { user: 'Ravi Kumar', rating: 5, text: 'Great app! Very easy to report waste.', time: '2 days ago' },
+      { user: 'Sunita Devi', rating: 4, text: 'Would love to see Hindi support!', time: '3 days ago' },
+      { user: 'Manoj Patel', rating: 5, text: 'The collection team responded super fast!', time: '5 days ago' },
+    ];
+    container.innerHTML = feedbacks.map(f => `
+      <div class="card" style="padding:14px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-weight:600;font-size:0.88rem;">${f.user}</div>
+          <div class="stars">${'⭐'.repeat(f.rating)}</div>
+        </div>
+        <div style="font-size:0.84rem;color:var(--text-muted);margin-bottom:6px;">${f.text}</div>
+        <div style="font-size:0.72rem;color:var(--text-muted);">${f.time}</div>
+      </div>`).join('');
+  }
+}
+
+async function updateStatus(id, status) {
+  try { await db.from('reports').update({ status }).eq('id', id); } catch(e) {}
+  const r = allReports.find(r => r.id === id);
+  if (r) r.status = status;
+  showToast(`Report marked as ${status} ✅`);
+  renderAdminContent();
+}
+
+function assignWorker(id) {
+  showToast('Worker assigned! They will be notified. 👷');
+}
+
+function postNotice() {
+  const title = document.getElementById('noticeTitle')?.value;
+  if (title) showToast('📢 Notice posted to all villages!');
+}
+
+function exportData(type) {
+  showToast(`📤 ${type} data exported!`);
+}
+
+// =============================================
+// VOTE / SHARE
+// =============================================
+async function voteReport(id, dir, btn) {
+  btn.classList.toggle('liked');
+  const cur = parseInt(btn.textContent.replace('👍','').trim()) || 0;
+  const newVal = btn.classList.contains('liked') ? cur+1 : cur-1;
+  btn.textContent = '👍 ' + newVal;
+  try { await db.from('reports').update({ upvotes: newVal }).eq('id', id); } catch(e) {}
+}
+
+function shareReport(id) { showToast('🔗 Report link copied!'); }
+
+// =============================================
+// FEEDBACK
+// =============================================
+async function submitFeedback() {
+  const text = document.getElementById('feedbackText').value.trim();
+  if (!text) { showToast('Please write your feedback!'); return; }
+  try { await db.from('feedback').insert({ user_id: currentUser?.id, text, rating: 5, created_at: new Date().toISOString() }); } catch(e) {}
+  closeModal('feedbackModal');
+  showToast('💬 Thank you for your feedback!');
+}
+
+// =============================================
+// HELPERS
+// =============================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function formatDate(d) {
+  if (!d) return 'Just now';
+  const dt = new Date(d);
+  const diff = Date.now() - dt;
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  return Math.floor(diff/86400000) + 'd ago';
+}
+
+function generateDemoReports(n) {
+  const types = ['Garbage Dump','Open Sewage','Plastic Waste','Open Burning','Dead Animal','E-Waste','Construction Debris'];
+  const locs = ['Near Water Tank, Rampur','Main Bazaar, Shivpur','Riverside, Krishnapur','School Road, Laxmipur','Temple Gate, Govindpur'];
+  const descs = ['Large pile accumulated over 3 days.','Needs immediate attention — foul smell.','Scattered across 50m radius.','Residents are burning waste daily.','Causing health hazard.'];
+  const statuses = ['pending','pending','inprogress','resolved','pending'];
+  return Array.from({length:n}, (_,i) => ({
+    id: 'demo_'+i, waste_type: types[i%types.length], location: locs[i%locs.length],
+    description: descs[i%descs.length], status: statuses[i%statuses.length],
+    severity: ['Low','Medium','High','Critical'][i%4], upvotes: Math.floor(Math.random()*20),
+    created_at: new Date(Date.now() - i*3600000*6).toISOString(), user_id: 'demo'
+  }));
+}
+</script>
+</body>
+</html>
