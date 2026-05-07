@@ -382,9 +382,8 @@
         <label class="form-label">Village / Ward</label>
         <select class="form-select" id="regVillage">
           <option>Select your village</option>
-          <option>Ambavarm</option><option>Dhanavulapadu</option><option>Devagudi</option>
-          <option>Dharmavaram</option><option>Doguvapatanam</option><option>Gandikota</option><option>Gudemcheruvu</option><option>Jammalamadugu</option>
-<option>Kothaguntalapalli</option><option>Moragudi</option><option>ponnathota</option><option>sirigepalli</option><option>OTHERS</option>
+          <option>Rampur</option><option>Shivpur</option><option>Krishnapur</option>
+          <option>Laxmipur</option><option>Govindpur</option><option>Nandpur</option>
         </select>
       </div>
       <div class="form-group">
@@ -397,6 +396,16 @@
     <div id="authMsg" style="margin-top:12px;font-size:0.82rem;text-align:center;"></div>
   </div>
 </div>
+
+      <div id="setupGuide" style="display:none;margin-top:14px;background:#e8f5e9;border:1px solid #1a7a3b;border-radius:12px;padding:14px;font-size:0.78rem;color:#0f4c24;">
+        <b>🚀 First Time Setup:</b><br><br>
+        1. Open <a href="https://supabase.com/dashboard/project/ndywxgfcvjmmyzlmvfpz/auth/providers" target="_blank" style="color:#1a7a3b;font-weight:700;">Supabase Dashboard</a><br>
+        2. Authentication → Email → Turn OFF <b>"Confirm email"</b><br>
+        3. Save → Come back and Login ✅
+      </div>
+      <div style="text-align:center;margin-top:8px;">
+        <span style="font-size:0.72rem;color:#5a7a5a;cursor:pointer;" onclick="var g=document.getElementById('setupGuide');g.style.display=g.style.display==='none'?'block':'none'">❓ Login not working? Tap here</span>
+      </div>
 
 <!-- MAIN APP -->
 <div id="app">
@@ -833,14 +842,72 @@ const SUPABASE_URL = 'https://ndywxgfcvjmmyzlmvfpz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_6WyJgMSx_paHk4LoVWjfAg_jWJijdkQ';
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const ADMIN_EMAIL = 'pavankumar@gmail.com';
-const ADMIN_PASSWORD = 'pavan@gmail.com';
+// =============================================
+// MULTI-ADMIN SYSTEM
+// =============================================
+// Super Admin (cannot be removed)
+const SUPER_ADMIN_EMAIL = 'pavankumar@gmail.com';
+const SUPER_ADMIN_PASSWORD = 'pavan@gmail.com';
+
+// Runtime admin list — loaded from Supabase + localStorage
+let adminEmails = [SUPER_ADMIN_EMAIL];
+
+async function loadAdminList() {
+  try {
+    const stored = localStorage.getItem('gs_admins');
+    if (stored) adminEmails = JSON.parse(stored);
+    // Also load from Supabase admins table
+    const { data } = await db.from('admins').select('email');
+    if (data && data.length) {
+      const emails = data.map(a => a.email);
+      adminEmails = [...new Set([SUPER_ADMIN_EMAIL, ...emails])];
+      localStorage.setItem('gs_admins', JSON.stringify(adminEmails));
+    }
+  } catch(e) {
+    const stored = localStorage.getItem('gs_admins');
+    if (stored) adminEmails = JSON.parse(stored);
+  }
+}
+
+function checkIsAdmin(email) {
+  return adminEmails.includes(email?.toLowerCase());
+}
+
+async function addAdmin(email, name) {
+  email = email.toLowerCase().trim();
+  if (!email) return false;
+  if (adminEmails.includes(email)) return 'exists';
+  adminEmails.push(email);
+  localStorage.setItem('gs_admins', JSON.stringify(adminEmails));
+  try {
+    await db.from('admins').upsert({ email, name: name || email.split('@')[0], added_by: currentUser?.email, added_at: new Date().toISOString() });
+  } catch(e) {}
+  return true;
+}
+
+async function removeAdmin(email) {
+  email = email.toLowerCase().trim();
+  if (email === SUPER_ADMIN_EMAIL) return 'superadmin'; // cannot remove super admin
+  adminEmails = adminEmails.filter(e => e !== email);
+  localStorage.setItem('gs_admins', JSON.stringify(adminEmails));
+  try { await db.from('admins').delete().eq('email', email); } catch(e) {}
+  return true;
+}
+
+async function changeAdminPassword(newEmail, newPassword) {
+  // Update super admin credentials in localStorage
+  localStorage.setItem('gs_super_email', newEmail);
+  localStorage.setItem('gs_super_pass', newPassword);
+  showToast('✅ Credentials updated! Re-login required.');
+  setTimeout(() => doLogout(), 1500);
+}
 
 // =============================================
 // APP STATE
 // =============================================
 let currentUser = null;
 let isAdmin = false;
+let isSuperAdmin = false;
 let currentPage = 'home';
 let reportFilter = 'all';
 let selectedWasteType = '';
@@ -866,7 +933,8 @@ async function checkSession() {
   const { data: { session } } = await db.auth.getSession();
   if (session) {
     currentUser = session.user;
-    isAdmin = currentUser.email === ADMIN_EMAIL;
+    isAdmin = checkIsAdmin(currentUser.email);
+    isSuperAdmin = currentUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
     showApp();
   } else {
     showAuth();
@@ -916,34 +984,69 @@ function switchAuthTab(tab) {
 }
 
 function fillAdmin() {
-  document.getElementById('loginEmail').value = ADMIN_EMAIL;
-  document.getElementById('loginPassword').value = ADMIN_PASSWORD;
+  const savedEmail = localStorage.getItem('gs_super_email') || SUPER_ADMIN_EMAIL;
+  const savedPass  = localStorage.getItem('gs_super_pass')  || SUPER_ADMIN_PASSWORD;
+  document.getElementById('loginEmail').value = savedEmail;
+  document.getElementById('loginPassword').value = savedPass;
   showToast('Admin credentials filled!');
 }
 
 async function doLogin() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass = document.getElementById('loginPassword').value;
+  await loadAdminList();
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pass  = document.getElementById('loginPassword').value;
   if (!email || !pass) { showAuthMsg('Please fill all fields', 'error'); return; }
-  
   showAuthMsg('Signing in...', 'info');
-  
-  // Admin special login
-  if (email === ADMIN_EMAIL && pass === ADMIN_PASSWORD) {
-    const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
-    if (error) {
-      // Try sign up for admin
-      const { data: su } = await db.auth.signUp({ email, password: pass, options: { data: { full_name: 'Pavan Kumar', role: 'admin' }}});
-      if (su?.user) { currentUser = su.user; isAdmin = true; showApp(); return; }
+
+  // ── Step 1: Try normal login ──
+  let { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+
+  // ── Step 2: If fails → try auto sign-up (for admin first time) ──
+  if (error) {
+    const isAdminEmail = checkIsAdmin(email) || email === SUPER_ADMIN_EMAIL;
+    if (isAdminEmail) {
+      showAuthMsg('Creating admin account...', 'info');
+      const { data: su, error: se } = await db.auth.signUp({
+        email, password: pass,
+        options: { data: { full_name: 'Pavan Kumar', role: 'admin' }, emailRedirectTo: null }
+      });
+      if (se) { showAuthMsg('❌ ' + se.message, 'error'); return; }
+
+      // If email confirmation needed, try login again immediately
+      if (su?.user && !su.session) {
+        // Supabase requires email confirm — bypass with direct login retry
+        const { data: d2, error: e2 } = await db.auth.signInWithPassword({ email, password: pass });
+        if (e2) {
+          // Email confirmation is ON in Supabase — show special message
+          showAuthMsg('', '');
+          document.getElementById('authMsg').innerHTML = `
+            <div style="background:#fff3cd;border:1px solid #f4c430;border-radius:10px;padding:12px;font-size:0.82rem;color:#856404;">
+              <b>⚠️ One-time Setup Required!</b><br><br>
+              Supabase email confirmation is ON.<br><br>
+              <b>Fix in 30 seconds:</b><br>
+              1. Go to <a href="https://supabase.com/dashboard" target="_blank" style="color:var(--green);">supabase.com/dashboard</a><br>
+              2. Authentication → Providers → Email<br>
+              3. Turn OFF <b>"Confirm email"</b><br>
+              4. Come back and login again ✅
+            </div>`;
+          return;
+        }
+        data = d2;
+      } else {
+        data = su;
+      }
     } else {
-      currentUser = data.user; isAdmin = true; showApp(); return;
+      showAuthMsg('❌ ' + error.message, 'error'); return;
     }
   }
-  
-  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
-  if (error) { showAuthMsg(error.message, 'error'); return; }
-  currentUser = data.user;
-  isAdmin = currentUser.email === ADMIN_EMAIL;
+
+  // ── Step 3: Get user from response ──
+  currentUser = data?.user || data?.session?.user;
+  if (!currentUser) {
+    showAuthMsg('❌ Login failed. Check credentials.', 'error'); return;
+  }
+  isAdmin      = checkIsAdmin(currentUser.email);
+  isSuperAdmin = currentUser.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
   showApp();
 }
 
@@ -1661,7 +1764,64 @@ function renderAdminContent() {
       </div>`;
   
   } else if (adminTab === 'settings') {
+    const curSuperEmail = localStorage.getItem('gs_super_email') || SUPER_ADMIN_EMAIL;
     container.innerHTML = `
+      <!-- MULTI-ADMIN MANAGEMENT -->
+      <div class="card" style="border:2px solid var(--green);">
+        <div class="card-title"><i class="fas fa-user-shield"></i> 🛡️ Manage Admins</div>
+        <div class="alert alert-info" style="margin-bottom:14px;"><i class="fas fa-info-circle"></i><span>Add or remove admins. Super Admin cannot be removed.</span></div>
+
+        <!-- Current Admins List -->
+        <div style="margin-bottom:14px;" id="adminListBox">
+          ${adminEmails.map(e => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--bg);border-radius:10px;margin-bottom:8px;border:1px solid var(--border);">
+              <div>
+                <div style="font-weight:600;font-size:0.88rem;">📧 ${e}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">${e === SUPER_ADMIN_EMAIL ? '👑 Super Admin' : '🛡️ Admin'}</div>
+              </div>
+              ${e === SUPER_ADMIN_EMAIL
+                ? '<span class="badge badge-green">Protected</span>'
+                : `<button class="btn btn-sm btn-danger" onclick="removeAdminUI('${e}')">🗑️ Remove</button>`}
+            </div>`).join('')}
+        </div>
+
+        <!-- Add New Admin -->
+        <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;color:var(--green);">➕ Add New Admin</div>
+        <div class="form-group">
+          <label class="form-label">Admin Name</label>
+          <input class="form-input" id="newAdminName" placeholder="Full name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Admin Email</label>
+          <input class="form-input" id="newAdminEmail" type="email" placeholder="admin@example.com" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Temporary Password</label>
+          <input class="form-input" id="newAdminPass" type="password" placeholder="Set a password" />
+        </div>
+        <button class="btn btn-primary" onclick="addAdminUI()">🛡️ Add Admin</button>
+      </div>
+
+      <!-- CHANGE SUPER ADMIN CREDENTIALS -->
+      <div class="card" style="border:2px solid var(--yellow);">
+        <div class="card-title"><i class="fas fa-key"></i> 🔑 Change Super Admin Login</div>
+        <div class="alert alert-warn" style="margin-bottom:14px;"><i class="fas fa-exclamation-triangle"></i><span>You will be logged out after saving. Use new credentials to login.</span></div>
+        <div class="form-group">
+          <label class="form-label">New Email</label>
+          <input class="form-input" id="newSuperEmail" type="email" placeholder="${curSuperEmail}" value="${curSuperEmail}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <input class="form-input" id="newSuperPass" type="password" placeholder="New password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <input class="form-input" id="newSuperPassConfirm" type="password" placeholder="Confirm password" />
+        </div>
+        <button class="btn btn-yellow" style="color:#333;" onclick="changeSuperAdminUI()">💾 Save New Credentials</button>
+      </div>
+
+      <!-- SYSTEM SETTINGS -->
       <div class="card">
         <div class="card-title"><i class="fas fa-cog"></i> System Settings</div>
         <div class="setting-row"><div><div class="setting-label">Auto-assign Reports</div><div class="setting-sub">Automatically assign to nearest worker</div></div><label class="toggle"><input type="checkbox" checked /><span class="toggle-slider"></span></label></div>
@@ -1673,7 +1833,6 @@ function renderAdminContent() {
       <div class="card">
         <div class="card-title"><i class="fas fa-paint-brush"></i> App Branding</div>
         <div class="form-group"><label class="form-label">App Name</label><input class="form-input" value="GramSafai" /></div>
-        <div class="form-group"><label class="form-label">Admin Email</label><input class="form-input" value="pavankumar@gmail.com" /></div>
         <div class="form-group"><label class="form-label">Helpline Number</label><input class="form-input" value="1800-XXX-XXXX" /></div>
         <button class="btn btn-primary" onclick="showToast('Settings saved!')">Save Settings</button>
       </div>`;
@@ -1790,6 +1949,94 @@ function generateDemoReports(n) {
     created_at: new Date(Date.now() - i*3600000*6).toISOString(), user_id: 'demo'
   }));
 }
+
+// =============================================
+// MULTI-ADMIN UI HANDLERS
+// =============================================
+async function addAdminUI() {
+  const name  = document.getElementById('newAdminName')?.value.trim();
+  const email = document.getElementById('newAdminEmail')?.value.trim().toLowerCase();
+  const pass  = document.getElementById('newAdminPass')?.value;
+
+  if (!email) { showToast('❌ Please enter an email!'); return; }
+  if (!pass || pass.length < 6) { showToast('❌ Password must be 6+ characters!'); return; }
+
+  showToast('⏳ Creating admin account...');
+
+  // 1. Create Supabase auth account for new admin
+  try {
+    const { data, error } = await db.auth.signUp({
+      email, password: pass,
+      options: { data: { full_name: name || email.split('@')[0], role: 'admin' } }
+    });
+    if (error && !error.message.includes('already')) {
+      showToast('⚠️ ' + error.message); 
+    }
+  } catch(e) {}
+
+  // 2. Add to admin list
+  const result = await addAdmin(email, name);
+  if (result === 'exists') { showToast('⚠️ This email is already an admin!'); return; }
+
+  showToast('✅ ' + (name || email) + ' added as Admin! 🛡️');
+
+  // 3. Clear fields & refresh
+  document.getElementById('newAdminName').value = '';
+  document.getElementById('newAdminEmail').value = '';
+  document.getElementById('newAdminPass').value = '';
+  setAdminTab('settings', document.querySelector('.admin-nav-btn[onclick*="settings"]'));
+}
+
+async function removeAdminUI(email) {
+  if (!confirm('Remove ' + email + ' as admin?')) return;
+  const result = await removeAdmin(email);
+  if (result === 'superadmin') { showToast('❌ Cannot remove Super Admin!'); return; }
+  showToast('✅ ' + email + ' removed from admins');
+  setAdminTab('settings', document.querySelector('.admin-nav-btn[onclick*="settings"]'));
+}
+
+async function changeSuperAdminUI() {
+  const newEmail = document.getElementById('newSuperEmail')?.value.trim().toLowerCase();
+  const newPass  = document.getElementById('newSuperPass')?.value;
+  const confirm2 = document.getElementById('newSuperPassConfirm')?.value;
+
+  if (!newEmail) { showToast('❌ Enter a new email!'); return; }
+  if (!newPass || newPass.length < 6) { showToast('❌ Password must be 6+ characters!'); return; }
+  if (newPass !== confirm2) { showToast('❌ Passwords do not match!'); return; }
+
+  showToast('⏳ Updating credentials...');
+
+  // Update in Supabase auth
+  try {
+    const updates = {};
+    if (newEmail !== currentUser.email) updates.email = newEmail;
+    if (newPass) updates.password = newPass;
+    if (Object.keys(updates).length) {
+      const { error } = await db.auth.updateUser(updates);
+      if (error) { showToast('⚠️ ' + error.message); return; }
+    }
+  } catch(e) {}
+
+  // Save locally
+  localStorage.setItem('gs_super_email', newEmail);
+  localStorage.setItem('gs_super_pass', newPass);
+
+  // Update admin list — replace old super email with new
+  const oldEmail = currentUser.email;
+  adminEmails = adminEmails.filter(e => e !== oldEmail);
+  adminEmails.unshift(newEmail);
+  localStorage.setItem('gs_admins', JSON.stringify(adminEmails));
+
+  // Update in DB
+  try {
+    await db.from('admins').upsert({ email: newEmail, name: 'Super Admin', added_by: 'system', is_super: true });
+    await db.from('admins').delete().eq('email', oldEmail);
+  } catch(e) {}
+
+  showToast('✅ Credentials updated! Logging out...');
+  setTimeout(() => doLogout(), 1500);
+}
+
 </script>
 </body>
 </html>
